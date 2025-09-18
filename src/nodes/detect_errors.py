@@ -88,6 +88,8 @@ FALLBACK_RULES = [
      ["layout shift", "off-canvas", "alignment", "button missing", "overlapping"]),
 ]
 
+
+
 def _fallback_detect(text: str) -> List[DetectedError]:
     s = text.lower()
     out: List[DetectedError] = []
@@ -100,23 +102,68 @@ def _fallback_detect(text: str) -> List[DetectedError]:
             ))
     return out
 
+# NEW: deterministic fallback for SUGGESTIONS
+SUGGESTION_TERMS = [
+    "feature request", "would be nice", "could you add", "please add",
+    "any chance of", "add support for", "add an option to", "option to",
+    "ability to", "please allow", "allow us to", "nice to have",
+    "would love", "i wish", "it would help if", "consider adding",
+    "integration with", "export to csv", "export to excel", "dark mode",
+    "offline mode", "bulk edit", "keyboard shortcuts", "advanced filter",
+    "saved views", "granular permissions", "custom roles", "api endpoint", "webhook"
+]
+
+def _fallback_suggestion(text: str) -> List[DetectedError]:
+    t = text.strip()
+    t_low = t.lower()
+    if not t:
+        return []
+    for term in SUGGESTION_TERMS:
+        if term in t_low:
+            # produce a tidy summary for common cases
+            if "bulk edit" in t_low:
+                summary = "Feature request: bulk edit for tasks"
+            elif "offline mode" in t_low:
+                summary = "Feature request: offline mode"
+            elif "dark mode" in t_low:
+                summary = "Feature request: dark mode"
+            elif "export to csv" in t_low:
+                summary = "Feature request: export to CSV"
+            elif "keyboard shortcuts" in t_low:
+                summary = "Feature request: keyboard shortcuts"
+            elif "granular permissions" in t_low or "custom roles" in t_low:
+                summary = "Feature request: granular permissions"
+            elif "integration with" in t_low:
+                # try to capture the target integration name
+                summary = "Feature request: integration with external service"
+            else:
+                summary = "Feature request: " + t.replace("\n", " ")
+            return [DetectedError(
+                error_summary=summary[:140],
+                error_type=["Other"],
+                rationale="Detected enhancement/feature request from user phrasing."
+            )]
+    return []
+
 def detect_errors_with_ollama(
     review: RawReview,
     ollama_model: str = "llama3.2:latest",
 ) -> List[DetectedError]:
     llm = make_llm(ollama_model)
 
+    # Include BOTH few-shots before the real review, then the user template
     full_prompt = f"""{SYSTEM}
 
 {FEWSHOT_USER}
 
 {FEWSHOT_ASSISTANT}
 
-Review:
-```
-{review.review[:4000]}
-```
-Return JSON only:"""
+{FEWSHOT_USER_2}
+
+{FEWSHOT_ASSISTANT_2}
+
+{USER.format(review_text=review.review[:4000])}
+"""
     
     resp = llm.invoke(full_prompt)
 
@@ -142,8 +189,15 @@ Return JSON only:"""
                     rationale=rationale
                 ))
 
-    #fallback if LLM returned nothing to the set keweords
+    # fallback if LLM returned nothing to the set keywords
     if not out:
+        # 1) try error fallbacks (crash/billing/etc.)
         out = _fallback_detect(review.review)
 
+    # If still empty, try suggestion fallback
+    if not out:
+        out = _fallback_suggestion(review.review)
+
+    # No placeholder rows; empty list means "nothing to log"
     return out
+
