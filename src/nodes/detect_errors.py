@@ -9,15 +9,16 @@ TYPES = {"Crash","Billing","Auth","API","Performance","Docs","Permissions","Mobi
 
 #system prompt
 SYSTEM = """You are a precise QA assistant.
-Task: Given a customer review, extract ZERO OR MORE concrete PRODUCT/SERVICE PROBLEMS.
+Task: Given a customer review, extract ZERO OR MORE concrete PRODUCT/SERVICE PROBLEMS
+OR FEATURE/ENHANCEMENT REQUESTS.
 
 Return ONLY valid JSON with this exact shape:
 {"errors":[{"error_summary":"...", "error_type":["Crash","Billing","Auth","API","Performance","Docs","Permissions","Mobile","UI","Webhooks","Other"], "rationale":"..."}]}
 
 Guidelines:
-- error_summary <= 140 chars, actionable (what/where).
-- If no real problem is present, return {"errors": []}.
-- Prefer specific types; include multiple types if appropriate.
+- error_summary <= 140 chars, actionable (what/where). For feature/enhancement requests, start with "Feature request:" or "Enhancement:" and name the request (e.g., "Feature request: dark mode").
+- If no problem or request is present, return {"errors": []}.
+- Use multiple error_type labels if appropriate; for feature requests, use ["Other"] unless clearly UI/Docs/etc.
 - Output must be ONLY the JSON object (no prose).
 """
 
@@ -34,6 +35,21 @@ USER = """Review:
 {review_text}
 ```
 Return JSON only:"""
+
+FEWSHOT_USER_2 = """Review:
+```
+Could you add support for bulk edit on tasks?
+```
+Return JSON only:"""
+
+FEWSHOT_ASSISTANT_2 = """{
+  "errors": [{
+    "error_summary": "Feature request: bulk edit for tasks",
+    "error_type": ["Other"],
+    "rationale": "User explicitly asks to add bulk-edit capability."
+  }]
+}"""
+
 
 def make_llm(ollama_model: str = "llama3.2:latest"):
     #force JSON output from Ollama
