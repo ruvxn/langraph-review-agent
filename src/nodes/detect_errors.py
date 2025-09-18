@@ -1,13 +1,13 @@
-# src/nodes/detect_errors.py
 from typing import List
 import json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.chat_models import ChatOllama
 from src.utils import RawReview, DetectedError
 
-# --- Config ---
+# labels for errors
 TYPES = {"Crash","Billing","Auth","API","Performance","Docs","Permissions","Mobile","UI","Webhooks","Other"}
 
+#system prompt
 SYSTEM = """You are a precise QA assistant.
 Task: Given a customer review, extract ZERO OR MORE concrete PRODUCT/SERVICE PROBLEMS.
 
@@ -21,7 +21,7 @@ Guidelines:
 - Output must be ONLY the JSON object (no prose).
 """
 
-# Tiny few-shot to steer the model
+# few shot to guide the model
 FEWSHOT_USER = """Review:
 ```
 Not thrilled about how the mobile app crashes whenever I switch workspaces. Lost my draft twice.
@@ -36,7 +36,7 @@ USER = """Review:
 Return JSON only:"""
 
 def make_llm(ollama_model: str = "llama3.2:latest"):
-    # Force JSON output from Ollama
+    #force JSON output from Ollama
     return ChatOllama(model=ollama_model, temperature=0, format="json")
 
 def _json_load(s: str) -> dict:
@@ -54,7 +54,7 @@ def _json_load(s: str) -> dict:
                 return {"errors": []}
         return {"errors": []}
 
-# --- Keyword fallback (guarantees something for obvious cases) ---
+#keyword fallback to guarantees something for obvious cases
 FALLBACK_RULES = [
     ("Mobile app crashes when switching workspaces", ["Mobile","Crash"],
      ["crash", "crashes", "crashing", "workspace"]),
@@ -89,8 +89,7 @@ def detect_errors_with_ollama(
     ollama_model: str = "llama3.2:latest",
 ) -> List[DetectedError]:
     llm = make_llm(ollama_model)
-    
-    # Build the full prompt manually to avoid ChatPromptTemplate issues
+
     full_prompt = f"""{SYSTEM}
 
 {FEWSHOT_USER}
@@ -127,7 +126,7 @@ Return JSON only:"""
                     rationale=rationale
                 ))
 
-    # Fallback if LLM returned nothing
+    #fallback if LLM returned nothing to the set keweords
     if not out:
         out = _fallback_detect(review.review)
 

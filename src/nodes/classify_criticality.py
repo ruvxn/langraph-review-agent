@@ -1,8 +1,7 @@
-# src/nodes/classify_criticality.py
 from typing import List
 from src.utils import DetectedError, Criticality
 
-# Keyword buckets (tune anytime)
+#keyword buckets for classificaiton
 BUCKETS: dict[Criticality, List[str]] = {
     "Critical": [
         "crash", "crashes", "crashing",
@@ -32,16 +31,17 @@ BUCKETS: dict[Criticality, List[str]] = {
     "None": [],
 }
 
+
 def classify_criticality(err: DetectedError) -> Criticality:
     s = f"{err.error_summary} {' '.join(err.error_type)}".lower()
 
-    # Priority order matters
+    #priority order matters
     for level in ("Critical", "Major", "Minor", "Suggestion"):
-        for kw in BUCKETS[level]:  # type: ignore[index]
+        for kw in BUCKETS[level]:  
             if kw in s:
-                return level  # type: ignore[return-value]
-
-    # Type-based fallbacks (helps even if no keywords)
+                return level  
+            
+    # typebased fallbacks this helps even if no keywords
     if "Crash" in err.error_type or "Billing" in err.error_type and "duplicate" in s:
         return "Critical"
     if "Performance" in err.error_type or "Auth" in err.error_type or "API" in err.error_type:

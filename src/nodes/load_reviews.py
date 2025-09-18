@@ -2,7 +2,9 @@ import pandas as pd
 from typing import List
 from src.utils import RawReview
 
+#check schema for required columns
 REQUIRED = {"review_id","review","username","email","date","reviewer_name","rating"}
+
 
 def load_reviews(path: str) -> List[RawReview]:
     df = pd.read_csv(path)
@@ -10,6 +12,7 @@ def load_reviews(path: str) -> List[RawReview]:
     if missing:
         raise ValueError(f"Missing columns: {missing}")
 
+# convert row from csv to model
     records: List[RawReview] = []
     for _, row in df.iterrows():
         records.append(

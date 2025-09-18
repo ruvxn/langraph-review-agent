@@ -1,19 +1,18 @@
-# src/run.py
-from src.graph import build_graph
+from src.graph import wf
 
 if __name__ == "__main__":
-    wf = build_graph().compile()
-    enriched = wf.invoke({})
-
+    enriched = wf.invoke({})  
     print(f"\n Done. Processed {len(enriched)} enriched errors.\n")
+    print("────────────────────────────────────────────────────────────")
 
-    for idx, e in enumerate(enriched[:20], start=1):  # show first 20 for readability
-        print("─" * 60)
+    for idx, e in enumerate(enriched, 1):
+        # extra safety in case something upstream changes
+        if not hasattr(e, "review"):
+            continue
         print(f"Review #{idx} ({e.review.review_id}, rating={e.review.rating})")
-        print(f"Text: {e.review.review[:250]}")  # truncate long text
-        print()
-        print(f"→ Severity: {e.criticality}")
-        print(f"→ Categories: {e.error.error_type}")
-        print(f"→ Summary: {e.error.error_summary}")
-        print(f"→ Rationale: {e.error.rationale}")
+        print(f"Text: {e.review.review}")
+        print(f" → Severity: {e.criticality}")
+        print(f" → Categories: {e.error.error_type}")
+        print(f" → Summary: {e.error.error_summary}")
+        print(f" → Rationale: {e.error.rationale}")
         print()
